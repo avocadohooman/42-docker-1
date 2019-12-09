@@ -1,0 +1,247 @@
+1) Install docker and docker-machine
+	1. Install brew via
+		rm -rf $HOME/.brew && git clone --depth=1 https://github.com/Homebrew/brew $HOME/.brew && export PATH=$HOME/.brew/bin:$PATH && brew update && echo "export PATH=$HOME/.brew/bin:$PATH" >> ~/.zshrc
+	2. Install docker and docker-machine 
+		brew install docker docker-machine xhyve docker-machine-driver-xhyve
+2) Create a virtual machine with docker-machine using the virtualbox driver, and
+	named Char:
+	docker-machine create --driver virtualbox Char
+3) After installing docker-machine, you get this message (or by running docker-machine env Char):
+
+
+	export DOCKER_TLS_VERIFY="1"
+	export DOCKER_HOST="tcp://192.168.99.101:2376"
+	export DOCKER_CERT_PATH="/Users/vbrazhni/.docker/machine/machines/Char"
+	export DOCKER_MACHINE_NAME="Char"
+	# Run this command to configure your shell: 
+	# eval $(docker-machine env Char)
+
+	--> run this eval $(docker-machine env Char) to configure your docker-machine
+	--> check result with docker-machine ls:
+
+	NAME   ACTIVE   DRIVER       STATE     URL                         SWARM   DOCKER     ERRORS
+	Char   *        virtualbox   Running   tcp://192.168.99.101:2376           v19.03.5
+
+	Now the ACTIVE column of Char has * instead of -
+
+4) Docker Hub is the place where open Docker images are stored. When we ran our first image by typing
+
+		"docker run --rm -p 8787:8787 rocker/verse
+
+		the software first checked if this image is available on your computer and since it wasn’t it downloaded the image from Docker Hub. So getting an image from Docker Hub works sort of automatically. 
+		If you just want to pull the image but not run it, you can also do
+
+		docker pull rocker/verse"
+
+		docker pull hello-world
+
+		check if installed with:
+		docker image ls
+
+5) Launch hello-world
+	docker hello-world
+
+6) Launch an nginx container, available on Docker Hub, as a background task:
+	1. Install nginx by pulling it from the Docke Hub
+		docker pull nginx 
+	2. docker run -d -p 5000:80 --name overlord --restart=always nginx
+			
+			Explanation:
+
+			docker run --help:
+
+			-d, --detach — Run container in background and print container ID.
+
+			--name string — Assign a name to the container.
+
+			-p, --publish list — Publish a container's port(s) to the host.
+
+			Docker workshop:
+
+			-p is a ports mapping <HOST PORT>:<CONTAINER PORT>.
+
+			docker run | Docker Documentation:
+
+			Restart policies (--restart)
+			Use Docker’s --restart to specify a container’s restart policy. A restart policy controls whether the Docker daemon restarts a container after exit. Docker supports the following restart policies:
+
+			Policy	Result
+			no	Do not automatically restart the container when it exits. This is the default.
+			on-failure[:max-retries]	Restart only if the container exits with a non-zero exit status. Optionally, limit the number of restart retries the Docker daemon attempts.
+			unless-stopped	Restart the container unless it is explicitly stopped or Docker itself is stopped or restarted.
+			always	Always restart the container regardless of the exit status. When you specify always, the Docker daemon will try to 
+			restart the container indefinitely. The container will also always start on daemon startup, regardless of the current state of the container.
+
+			Test:
+			Access http://192.168.99.100:5000/ via your browser and a welcome message from nginx should appear
+
+			Save container ID:
+			c0a373b8d095653fdd45a4e12b655b999456ab0cf7b087aa9633e1b10d0d406c
+	7) Get the internal IP address of the overlord container without starting its shell and
+		in one command.
+
+		1. Follow these steps https://linuxconfig.org/how-to-retrieve-docker-container-s-internal-ip-address
+		2. docker inspect -f '{{ .NetworkSettings.IPAddress }}' c0a373b8d095653fdd45a4e12b655b999456ab0cf7b087aa9633e1b10d0d406c
+			or docker inspect -f '{{ .NetworkSettings.IPAddress }}' overlord
+	8)  Launch a shell from an alpine container, and make sure that you can interact directly with the container via your terminal, 
+		and that the container deletes itself once the shell’s execution is done:
+
+		1. Pull alpine (A minimal Docker image based on Alpine Linux with a complete package index)
+			docker-machine pull alpine
+		2. Run:
+			docker run -it --rm alpine /bin/sh
+
+			Explanation
+
+			docker run --help:
+
+			-i, --interactive — Keep STDIN open even if not attached.
+
+			-t, --tty — Allocate a pseudo-TTY (In linux when you run a command, you need a terminal (tty) to execute it.).
+
+			--rm — Automatically remove the container when it exits.
+
+			Starting a Shell in the Docker Alpine Container:
+
+			Usually, an Alpine Linux image doesn't contain bash, Instead you can use /bin/ash, /bin/sh, ash or only sh.
+
+	9)  From the shell of a debian container, install via the container’s package manager everything you need 
+		to compile C source code and push it onto a git repo:
+
+		1. Pull debian
+			docker pull debian
+		2. Run debian
+			docker run -it --rm debian
+		3. Install compiler and git (in debian)
+			apt-get update
+			apt-get upgrade -y
+			apt-get install -y build-essential 
+			apt-get install -y git
+	10) docker volume create --name hatchery
+	11) docker volume ls
+	12) Launch a mysql container as a background task. It should be able to restart on its own in case of error, and the root password of the database should be Kerrigan. 
+		You will also make sure that the database is stored in the hatchery volume, that the container directly creates a database named zerglings, and that the container itself is named spawning-pool.
+
+		1. Pull mysql container
+		2. run (https://hub.docker.com/_/mysql):
+		docker run -d --name spawning-pool --restart on-failure:5 -e MYSQL_ROOT_PASSWORD=Kerrigan -e MYSQL_DATABASE=zerglings -v hatchery:/var/lib/mysql mysql --default-auth=mysql_native_password
+
+		-d for background
+		--name for changing name of container 
+		--restart on-failure:<you number> restarts after certain amount of failures
+		-e set environment variables
+		-v bin mount a volume (/var/lib/mysql is the default directory where MySQL container writes its files.)
+		--default-auth=mysql_native_password needs to be used because MySQL 8 changed the password authentication method. 
+		 	You're looking for the mysql_native_password plugin https://dev.mysql.com/doc/refman/8.0/en/native-pluggable-authentication.html
+			 so you'll want to connect with:
+			 mysql --default-auth=mysql_native_password 
+	 13) https://stackoverflow.com/questions/30342796/how-to-get-env-variable-when-doing-docker-inspect/30353018
+
+	 14) Launch a wordpress container as a background task, just for fun.
+	 	1. start the spawning-pool container
+		 	docker start spawning-pool
+		2.  docker run -d --name lair -p 8080:80 --link spawning-pool:mysql wordpress
+			--link 
+			Links allow containers to discover each other and securely transfer information about one container to another container. 
+			When you set up a link, you create a conduit between a source container and a recipient container. The recipient can then 
+			access select data about the source. To create a link, you use the --link flag.
+		
+		Useful stuff:
+			docker restart <container>
+			docker ps (lists all active container)
+			docker rm -f <container> (removes a container)
+	
+	15)  Launch a phpmyadmin container as a background task. It should be named roach-warden,
+		its 80 port should be bound to the 8081 port of the virtual machine and it should
+		be able to explore the database stored in the spawning-pool container.
+
+		Running PhpMyAdmin container
+		Phpmyadmin must point to MySQL Server. So that we must link both containers by adding the option : --link name-of-container:name-of-imag.
+
+		$ docker run --name myadmin -d --link mysql:db -p 8080:80 phpmyadmin/phpmyadmin
+
+		docker run --name roach-warden  -d --link spawning-pool:db -p 8081:80 phpmyadmin/phpmyadmin
+
+	16) docker logs -f spawning-pool
+
+		Explanation:
+
+		How do I view real time logging of Docker containers?:
+
+		To view the logs of a Docker container in real time, use the following command:
+
+		docker logs -f <CONTAINER>
+		The -f or --follow option will show live log output.
+
+	17) docker ps
+
+	18) docker-restart overlord
+
+	19) 
+		docker run --name Abathur -v ~/:/root -p 3000:3000 -dit python:2-slim
+		docker exec Abathur pip install Flask 
+		echo 'from flask import Flask\napp = Flask(__name__)\n@app.route("/")\ndef hello_world():\n\treturn "<h1>Hello, World!</h1>"' > ~/hello.py
+		docker exec -e FLASK_APP=/root/hello.py Abathur flask run --host=0.0.0.0 --port 3000
+
+			INFO:
+			-i starts an interactive session and -t emulates a tty. But -d tells Docker to detach and run in the background.
+			The docker exec command runs a new command in a running container:
+				docker exec | Docker Documentation (https://docs.docker.com/engine/reference/commandline/exec/):
+
+				The docker exec command runs a new command in a running container.
+
+				--env , -e — Set environment variables.
+
+				A Minimal Application
+				A minimal Flask application looks something like this:
+
+				from flask import Flask
+				app = Flask(__name__)
+
+				@app.route('/')
+				def hello_world():
+					return 'Hello, World!'
+				To run the application you can either use the flask command or python’s -m switch with Flask. Before you can do that you need to tell your terminal the application 
+				to work with by exporting the FLASK_APP environment variable:
+
+				$ export FLASK_APP=hello.py
+				$ flask run
+				* Running on http://127.0.0.1:5000/
+
+				You can then access / test it via http://192.168.99.101:3000/
+				or 
+				curl $(docker-machine ip Char):3000
+	20)  docker swarm init --advertise-addr $(docker-machine ip Char)
+
+		To add a worker to this swarm use this command:
+
+		docker swarm join --token SWMTKN-1-0q8liwmhu87dra08nszl4q395wle9hpkdxyyh32hf4b98vkzjg-ctlgbk19alyzhstkxjdnmwbmh 192.168.99.101:2377 
+
+		INFO
+		Swarm turns a pool of Docker hosts into a virtual, single host. Swarm is especially useful for people who are trying to get comfortable with an orchestrated environment 
+		or who need to adhere to a simple deployment technique but also have more just one cloud environment or one particular platform to run this on.
+
+	21) docker-machine create --driver virtualbox Aiur
+
+	22) docker-machine ssh Aiur "docker swarm join --token SWMTKN-1-0q8liwmhu87dra08nszl4q395wle9hpkdxyyh32hf4b98vkzjg-ctlgbk19alyzhstkxjdnmwbmh 192.168.99.101:2377"
+
+	23) 
+
+		docker network create -d overlay overmind
+		or (if you are not on the manager node)
+		docker-machine ssh Char "docker network create -d overlay overmind"
+
+		docker network ls
+
+		INFO:
+
+		The overlay network driver creates a distributed network among multiple Docker daemon hosts. 
+		This network sits on top of (overlays) the host-specific networks, allowing containers connected to it (including swarm service containers) to communicate securely.
+
+	24) 
+
+	
+
+
+
+	 
